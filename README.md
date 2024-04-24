@@ -1,8 +1,6 @@
 # Shadowlogger
 
-Simple wrapper for built-in logger module which formats logs and
-adds a passthrough function which can be overridden to add 
-additional log handling.
+Simple wrapper for built-in logger module which intercepts all logs and shadows them, preventing sensitive information from being leaked.
 
 ---
 
