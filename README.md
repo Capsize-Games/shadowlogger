@@ -6,6 +6,8 @@ Simple wrapper for built-in logger module which intercepts all logs and shadows 
 
 ![img.png](img.png)
 
+[![Upload Python Package](https://github.com/Capsize-Games/shadowlogger/actions/workflows/python-publish.yml/badge.svg)](https://github.com/Capsize-Games/shadowlogger/actions/workflows/python-publish.yml)
+
 ---
 
 ## Installation
