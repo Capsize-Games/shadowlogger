@@ -6,7 +6,7 @@ from shadowlogger.shadowlogger import ShadowLogger
 class CustomPrefixShadowLogger(ShadowLogger):
     prefix = "CustomPrefix"
 
-    def handle_message(self, formatted_message: str, level_name: str):
+    def handle_message(self, formatted_message: str, level_name: str, data: dict = None):
         self.last_formatted_message = formatted_message
         self.last_level_name = level_name
 

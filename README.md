@@ -21,7 +21,13 @@ pip install shadowlogger
 ## Usage
 
 ```python
-import shadowlogger.logger
+import shadowlogger
+
+# Activate shadowlogger
+shadowlogger.manager.install()
+
+# Deactivate shadowlogger
+shadowlogger.manager.uninstall()
 ```
 
 or 

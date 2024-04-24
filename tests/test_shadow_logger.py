@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+import logging
 from shadowlogger.shadowlogger import ShadowLogger
 
 
@@ -30,6 +31,22 @@ class TestShadowLogger(unittest.TestCase):
         message = "error message"
         self.logger.error(message)
         mock_error.assert_called_once_with(message)
+
+    @patch.object(ShadowLogger, 'handle_message')
+    def test_handle_calls_handle_message(self, mock_handle_message):
+        unique_message = 'unique test message'
+        unique_level = 99
+        record = logging.LogRecord(
+            name='test',
+            level=unique_level,
+            pathname='',
+            lineno=0,
+            msg=unique_message,
+            args=(),
+            exc_info=None
+        )
+        self.logger.handle(record)
+        mock_handle_message.assert_called()
 
 
 if __name__ == '__main__':
