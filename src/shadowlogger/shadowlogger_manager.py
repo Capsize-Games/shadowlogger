@@ -1,7 +1,6 @@
 import threading
 import logging
 
-from shadowlogger.intercept_handler import InterceptHandler
 from shadowlogger.shadowlogger import ShadowLogger
 from shadowlogger.singleton import Singleton
 
@@ -9,14 +8,19 @@ from shadowlogger.singleton import Singleton
 class ShadowLoggerManager(metaclass=Singleton):
     def __init__(self):
         self.original_handlers = None
-        self.handler = None
-        self.shadow_logger = ShadowLogger()
         self.lock = threading.Lock()
 
-    def activate(self):
-        if self.handler is None:
-            self.handler = InterceptHandler(self.shadow_logger)
+    @property
+    def shadowlogger(self):
+        if self.__shadowlogger is None:
+            self.__shadowlogger = ShadowLogger()
+        return self.__shadowlogger
 
+    @shadowlogger.setter
+    def shadowlogger(self, value):
+        self.__shadowlogger = value
+
+    def activate(self):
         with self.lock:
             # Get the root logger
             root_logger = logging.getLogger()
@@ -29,7 +33,7 @@ class ShadowLoggerManager(metaclass=Singleton):
                 root_logger.removeHandler(h)
 
             # Add the InterceptHandler to the root logger
-            root_logger.addHandler(self.handler)
+            root_logger.addHandler(self.shadowlogger.intercept_handler)
 
             # Set the level for the root logger
             root_logger.setLevel(logging.INFO)
@@ -43,7 +47,7 @@ class ShadowLoggerManager(metaclass=Singleton):
             root_logger = logging.getLogger()
 
             # Remove the InterceptHandler from the root logger
-            root_logger.removeHandler(self.handler)
+            root_logger.removeHandler(self.shadowlogger.intercept_handler)
 
             # Restore the original handlers
             for h in self.original_handlers:
@@ -53,4 +57,4 @@ class ShadowLoggerManager(metaclass=Singleton):
             root_logger.propagate = True
 
             # Restore the original os.write and socket.send functions
-            self.handler.restore_original_functions()
+            self.shadowlogger.intercept_handler.restore_original_functions()

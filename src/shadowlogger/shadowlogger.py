@@ -38,10 +38,15 @@ class ShadowLogger(logging.Logger):
         # Append current time to name to make it unique
         super().__init__(f"{self.name}_{time.time()}")
         self.__formatter = logging.Formatter(self.message_format)
+        self.__intercept_handler: InterceptHandler = None
         self.__stream_handler = self.__initialize_stream_handler()
-        self.__intercept_handler = InterceptHandler(self)  # Add InterceptHandler
-        self.addHandler(self.__intercept_handler)  # Add InterceptHandler to the logger
         self.__set_level(self.log_level)
+
+    def activate(self):
+        self.addHandler(self.intercept_handler)  # Add InterceptHandler to the logger
+
+    def deactivate(self):
+        self.removeHandler(self.intercept_handler)
 
     def __initialize_stream_handler(self) -> logging.StreamHandler:
         stream_handler = logging.StreamHandler()
@@ -50,6 +55,16 @@ class ShadowLogger(logging.Logger):
         if not any(isinstance(handler, logging.StreamHandler) for handler in self.handlers):
             self.addHandler(stream_handler)
         return stream_handler
+
+    @property
+    def intercept_handler(self) -> InterceptHandler:
+        if self.__intercept_handler is None:
+            self.intercept_handler = InterceptHandler(self)
+        return self.__intercept_handler
+
+    @intercept_handler.setter
+    def intercept_handler(self, handler: InterceptHandler):
+        self.__intercept_handler = handler
 
     def handle(self, record):
         # Call the original handle method
@@ -83,7 +98,7 @@ class ShadowLogger(logging.Logger):
             level = logging.DEBUG
         self.setLevel(level)
         self.__stream_handler.setLevel(level)
-        self.__intercept_handler.setLevel(level)  # Set level for InterceptHandler
+        self.intercept_handler.setLevel(level)  # Set level for InterceptHandler
 
-    def get_latest_log(self):
-        return self.__intercept_handler.get_latest_log()  # Method to get the latest log from InterceptHandler
+    # def get_latest_log(self):
+    #     return self.intercept_handler.get_latest_log()  # Method to get the latest log from InterceptHandler
