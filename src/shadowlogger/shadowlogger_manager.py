@@ -1,6 +1,8 @@
 import threading
 import logging
+from typing import List
 
+from shadowlogger.base_tracker import BaseTracker
 from shadowlogger.shadowlogger import ShadowLogger
 from shadowlogger.singleton import Singleton
 
@@ -12,7 +14,6 @@ class ShadowLoggerManager(metaclass=Singleton):
         self.__shadowlogger = None
         self.__show_stdout = show_stdout
         self.__active = False
-        self.__shadowlogger = None
 
     @property
     def shadowlogger(self):
@@ -21,13 +22,14 @@ class ShadowLoggerManager(metaclass=Singleton):
     def activate(
         self,
         show_stdout: bool = None,
+        trackers: List[BaseTracker] = None
     ):
         self.__show_stdout = show_stdout if show_stdout is not None else self.__show_stdout
 
         if self.__active:
             self.deactivate()
 
-        self.__shadowlogger = ShadowLogger(self.__show_stdout)
+        self.__shadowlogger = ShadowLogger(self.__show_stdout, trackers=trackers)
 
         self.__active = True
         with self.lock:

@@ -2,7 +2,9 @@ import inspect
 import logging
 import warnings
 import time
+from typing import List
 
+from shadowlogger.base_tracker import BaseTracker
 from shadowlogger.intercept_handler import InterceptHandler
 
 
@@ -34,10 +36,15 @@ class ShadowLogger(logging.Logger):
     message_format: str = "%(asctime)s - SHADOWLOGGER - %(levelname)s - %(prefix)s - %(message)s - %(lineno)d"
     log_level: int = logging.DEBUG
 
-    def __init__(self, show_stdout: bool = True):
+    def __init__(
+        self,
+        show_stdout: bool = True,
+        trackers: List[BaseTracker] = None
+    ):
         # Append current time to name to make it unique
         super().__init__(f"{self.name}_{time.time()}")
         self.__show_stdout = show_stdout
+        self.__trackers = trackers if trackers is not None else []
         self.__formatter = logging.Formatter(self.message_format)
         self.__intercept_handler: InterceptHandler = None
         self.__stream_handler = self.__initialize_stream_handler()
@@ -60,7 +67,11 @@ class ShadowLogger(logging.Logger):
     @property
     def intercept_handler(self) -> InterceptHandler:
         if self.__intercept_handler is None:
-            self.intercept_handler = InterceptHandler(self, show_stdout=self.__show_stdout)
+            self.intercept_handler = InterceptHandler(
+                self,
+                show_stdout=self.__show_stdout,
+                hook=self.__process_log_record
+            )
         return self.__intercept_handler
 
     @intercept_handler.setter
@@ -117,3 +128,12 @@ class ShadowLogger(logging.Logger):
 
     # def get_latest_log(self):
     #     return self.intercept_handler.get_latest_log()  # Method to get the latest log from InterceptHandler
+
+    def __process_log_record(self, record: str) -> None:
+        """
+        Process the log record
+        :param record: logging.LogRecord
+        :return: None
+        """
+        for tracker in self.__trackers:
+            tracker.process_log_record(record)

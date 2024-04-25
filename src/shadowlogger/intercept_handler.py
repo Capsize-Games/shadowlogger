@@ -6,7 +6,19 @@ import sys
 
 
 class InterceptHandler(logging.Handler):
-    def __init__(self, shadow_logger, show_stdout: bool = True):
+    def __init__(
+        self,
+        shadow_logger,
+        show_stdout: bool = True,
+        hook: callable = lambda x: None
+    ):
+        """
+        InterceptHandler intercepts and logs print statements, file operations, and network operations.
+
+        :param shadow_logger:
+        :param show_stdout:
+        :param hook: A callback function to process log entries.
+        """
         super().__init__()
         self.__original_sys_stdout = {
             "displayhook": None,
@@ -24,6 +36,7 @@ class InterceptHandler(logging.Handler):
             "setrecursionlimit": None,
             "settrace": None,
         }
+        self.__hook = hook
         self.__original_os_functions = {
             # "path": None,
             # "name": None,
@@ -61,10 +74,6 @@ class InterceptHandler(logging.Handler):
         }
         self.shadow_logger = shadow_logger
         self.lock = threading.Lock()
-        self.nullscream = {
-            "blocked": {},
-            "allowed": {},
-        }
         self.__show_stdout = show_stdout
 
         with self.lock:
@@ -156,18 +165,7 @@ class InterceptHandler(logging.Handler):
         log_info = self.prepare_log_info(record, log_entry)
         if "Shadowlogger" not in log_entry:
             self.shadow_logger.handle_message(log_entry, record.levelno, log_info)
-
-        # Check for nullscream_allow and nullscream_block tags
-        if 'nullscream_allow' in log_entry:
-            root_module = log_entry.split(' ')[1].split('.')[0]
-            self.nullscream['allowed'].setdefault(root_module, {"total": 0, "modules": []})
-            self.nullscream['allowed'][root_module]['total'] += 1
-            self.nullscream['allowed'][root_module]['modules'].append(log_entry.split(' ')[1])
-        elif 'nullscream_block' in log_entry:
-            root_module = log_entry.split(' ')[1].split('.')[0]
-            self.nullscream['blocked'].setdefault(root_module, {"total": 0, "modules": []})
-            self.nullscream['blocked'][root_module]['total'] += 1
-            self.nullscream['blocked'][root_module]['modules'].append(log_entry.split(' ')[1])
+        self.__hook(log_entry)
 
     def prepare_log_info(self, record, log_entry):
         """Prepare log information dictionary with enhanced details."""
