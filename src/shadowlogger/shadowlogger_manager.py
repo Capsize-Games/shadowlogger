@@ -6,21 +6,30 @@ from shadowlogger.singleton import Singleton
 
 
 class ShadowLoggerManager(metaclass=Singleton):
-    def __init__(self):
+    def __init__(self, show_stdout: bool = True):
         self.original_handlers = None
         self.lock = threading.Lock()
+        self.__shadowlogger = None
+        self.__show_stdout = show_stdout
+        self.__active = False
+        self.__shadowlogger = None
 
     @property
     def shadowlogger(self):
-        if self.__shadowlogger is None:
-            self.__shadowlogger = ShadowLogger()
         return self.__shadowlogger
 
-    @shadowlogger.setter
-    def shadowlogger(self, value):
-        self.__shadowlogger = value
+    def activate(
+        self,
+        show_stdout: bool = None,
+    ):
+        self.__show_stdout = show_stdout if show_stdout is not None else self.__show_stdout
 
-    def activate(self):
+        if self.__active:
+            self.deactivate()
+
+        self.__shadowlogger = ShadowLogger(self.__show_stdout)
+
+        self.__active = True
         with self.lock:
             # Get the root logger
             root_logger = logging.getLogger()
@@ -42,6 +51,8 @@ class ShadowLoggerManager(metaclass=Singleton):
             root_logger.propagate = False
 
     def deactivate(self):
+        if not self.__active:
+            return
         with self.lock:
             # Get the root logger
             root_logger = logging.getLogger()

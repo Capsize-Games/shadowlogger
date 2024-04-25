@@ -34,9 +34,10 @@ class ShadowLogger(logging.Logger):
     message_format: str = "%(asctime)s - SHADOWLOGGER - %(levelname)s - %(prefix)s - %(message)s - %(lineno)d"
     log_level: int = logging.DEBUG
 
-    def __init__(self):
+    def __init__(self, show_stdout: bool = True):
         # Append current time to name to make it unique
         super().__init__(f"{self.name}_{time.time()}")
+        self.__show_stdout = show_stdout
         self.__formatter = logging.Formatter(self.message_format)
         self.__intercept_handler: InterceptHandler = None
         self.__stream_handler = self.__initialize_stream_handler()
@@ -59,7 +60,7 @@ class ShadowLogger(logging.Logger):
     @property
     def intercept_handler(self) -> InterceptHandler:
         if self.__intercept_handler is None:
-            self.intercept_handler = InterceptHandler(self)
+            self.intercept_handler = InterceptHandler(self, show_stdout=self.__show_stdout)
         return self.__intercept_handler
 
     @intercept_handler.setter
@@ -82,11 +83,25 @@ class ShadowLogger(logging.Logger):
         details: dict = None
     ) -> None:
         """
-        Placeholder for handling formatted messages.
-
-        Override this to handle the formatted message in whichever way you want.
+        Handle the formatted message and level name
+        :param formatted_message: str
+        :param level_name: int
+        :param details: dict
+        :return: None
         """
-        pass
+        if "SHADOWLOGGER" in formatted_message or "nullscream_allow" in formatted_message or "nullscream_block" in formatted_message:
+            return
+        # Log the message
+        # if level_name == logging.DEBUG:
+        #     self.debug(formatted_message)
+        # elif level_name == logging.INFO:
+        #     self.info(formatted_message)
+        # elif level_name == logging.WARNING:
+        #     self.warning(formatted_message)
+        # elif level_name == logging.ERROR:
+        #     self.error(formatted_message)
+        # elif level_name == logging.FATAL:
+        #     self.fatal(formatted_message)
 
     def __set_level(self, level) -> None:
         """

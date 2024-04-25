@@ -6,7 +6,7 @@ import sys
 
 
 class InterceptHandler(logging.Handler):
-    def __init__(self, shadow_logger):
+    def __init__(self, shadow_logger, show_stdout: bool = True):
         super().__init__()
         self.__original_sys_stdout = {
             "displayhook": None,
@@ -61,10 +61,15 @@ class InterceptHandler(logging.Handler):
         }
         self.shadow_logger = shadow_logger
         self.lock = threading.Lock()
+        self.nullscream = {
+            "blocked": {},
+            "allowed": {},
+        }
+        self.__show_stdout = show_stdout
 
         with self.lock:
             # Overriding sys.stdout to capture print statements
-            sys.stdout = self.LogStream(self.emit_record)
+            sys.stdout = self.LogStream(self.emit_record, show_stdout=self.show_stdout)
             for k, v in self.__original_sys_stdout.items():
                 self.__original_sys_stdout[k] = getattr(sys, k, None)
                 setattr(sys, k, self.__override_sys_stdout(getattr(sys, k, None)))
@@ -78,6 +83,14 @@ class InterceptHandler(logging.Handler):
             for k, v in self.__original_socket_functions.items():
                 self.__original_socket_functions[k] = getattr(socket, k, None)
                 setattr(socket, k, self.__override_socket_function(getattr(socket, k, None)))
+
+    @property
+    def show_stdout(self):
+        return self.__show_stdout
+
+    @show_stdout.setter
+    def show_stdout(self, value):
+        self.__show_stdout = value
 
     def restore_original_functions(self):
         self.__restore_sys_stdout()
@@ -103,9 +116,6 @@ class InterceptHandler(logging.Handler):
         """Override sys.stdout to capture print statements."""
 
         def custom_stdout(*args, **kwargs):
-            print("*" * 10)
-            print(args, kwargs)
-            print("*" * 10)
             with self.lock:
                 if original_function:
                     return original_function(*args, **kwargs)
@@ -144,7 +154,20 @@ class InterceptHandler(logging.Handler):
     def process_log_record(self, record):
         log_entry: str = self.__sanitized_log_entry(record)
         log_info = self.prepare_log_info(record, log_entry)
-        self.shadow_logger.handle_message(log_info, record.levelno, log_info)
+        if "Shadowlogger" not in log_entry:
+            self.shadow_logger.handle_message(log_entry, record.levelno, log_info)
+
+        # Check for nullscream_allow and nullscream_block tags
+        if 'nullscream_allow' in log_entry:
+            root_module = log_entry.split(' ')[1].split('.')[0]
+            self.nullscream['allowed'].setdefault(root_module, {"total": 0, "modules": []})
+            self.nullscream['allowed'][root_module]['total'] += 1
+            self.nullscream['allowed'][root_module]['modules'].append(log_entry.split(' ')[1])
+        elif 'nullscream_block' in log_entry:
+            root_module = log_entry.split(' ')[1].split('.')[0]
+            self.nullscream['blocked'].setdefault(root_module, {"total": 0, "modules": []})
+            self.nullscream['blocked'][root_module]['total'] += 1
+            self.nullscream['blocked'][root_module]['modules'].append(log_entry.split(' ')[1])
 
     def prepare_log_info(self, record, log_entry):
         """Prepare log information dictionary with enhanced details."""
@@ -203,12 +226,15 @@ class InterceptHandler(logging.Handler):
     class LogStream:
         """Stream object to capture print statements and redirect them as log entries."""
 
-        def __init__(self, log_function):
+        def __init__(self, log_function, show_stdout:bool = True):
             self.log_function = log_function
+            self.__show_stdout = show_stdout
 
         def write(self, message):
             if message.strip() != "":
                 self.log_function(message.strip())
+                if self.__show_stdout:
+                    sys.__stdout__.write((message.strip() + '\n'))
 
         def flush(self):
             pass
